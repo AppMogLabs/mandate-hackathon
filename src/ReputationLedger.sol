@@ -54,11 +54,10 @@ contract ReputationLedger is AccessControl {
     /// @param buyerAgentId The agent ID of the buyer.
     /// @param sellerAgentId The agent ID of the seller.
     /// @param amount The transaction amount (used to weight reputation gain).
-    function recordTransaction(
-        uint256 buyerAgentId,
-        uint256 sellerAgentId,
-        uint256 amount
-    ) external onlyRole(RECORDER_ROLE) {
+    function recordTransaction(uint256 buyerAgentId, uint256 sellerAgentId, uint256 amount)
+        external
+        onlyRole(RECORDER_ROLE)
+    {
         require(buyerAgentId != 0 && sellerAgentId != 0, "ReputationLedger: zero agentId");
 
         // Simple linear scoring: 1 reputation point per 1000 RATE transacted
@@ -92,9 +91,7 @@ contract ReputationLedger is AccessControl {
     /// @notice Get reputation data for multiple agents (batch query).
     /// @param agentIds Array of agent IDs to query.
     /// @return scores Array of reputation scores in same order.
-    function getReputationBatch(
-        uint256[] calldata agentIds
-    ) external view returns (uint256[] memory scores) {
+    function getReputationBatch(uint256[] calldata agentIds) external view returns (uint256[] memory scores) {
         scores = new uint256[](agentIds.length);
         for (uint256 i = 0; i < agentIds.length; i++) {
             scores[i] = reputationOf[agentIds[i]];

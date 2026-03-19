@@ -37,11 +37,7 @@ contract OrderBookSecurityTest is Test {
         auditLog = new AuditLog(admin);
 
         orderBook = new OrderBook(
-            address(rateToken),
-            address(agentRegistry),
-            address(reputationLedger),
-            address(auditLog),
-            admin
+            address(rateToken), address(agentRegistry), address(reputationLedger), address(auditLog), admin
         );
 
         vm.startPrank(admin);

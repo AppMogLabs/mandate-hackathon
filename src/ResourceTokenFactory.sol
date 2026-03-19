@@ -33,11 +33,14 @@ contract ResourceTokenFactory is AccessControl {
     /// @param name Token name (e.g. "COMPUTE").
     /// @param symbol Token symbol (e.g. "COMPUTE").
     /// @return token Address of the newly deployed ResourceToken.
-    function deployResource(
-        string calldata name,
-        string calldata symbol
-    ) external onlyRole(DEPLOYER_ROLE) returns (address token) {
-        if (tokensBySymbol[symbol] != address(0)) revert("ResourceTokenFactory: already deployed");
+    function deployResource(string calldata name, string calldata symbol)
+        external
+        onlyRole(DEPLOYER_ROLE)
+        returns (address token)
+    {
+        if (tokensBySymbol[symbol] != address(0)) {
+            revert("ResourceTokenFactory: already deployed");
+        }
 
         ResourceToken rt = new ResourceToken(name, symbol, address(this));
         token = address(rt);
@@ -52,11 +55,7 @@ contract ResourceTokenFactory is AccessControl {
     /// @param token Address of the ResourceToken.
     /// @param authority Address to grant/revoke minting authority.
     /// @param authorised True to grant, false to revoke.
-    function setMintAuthority(
-        address token,
-        address authority,
-        bool authorised
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMintAuthority(address token, address authority, bool authorised) external onlyRole(DEFAULT_ADMIN_ROLE) {
         bytes32 minterRole = ResourceToken(token).MINTER_ROLE();
         if (authorised) {
             ResourceToken(token).grantRole(minterRole, authority);

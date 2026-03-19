@@ -17,11 +17,7 @@ contract ResourceToken is ERC20, ERC20Burnable, AccessControl {
     /// @param name_ Token name (e.g. "COMPUTE").
     /// @param symbol_ Token symbol (e.g. "COMPUTE").
     /// @param admin Address that receives DEFAULT_ADMIN_ROLE and MINTER_ROLE.
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address admin
-    ) ERC20(name_, symbol_) {
+    constructor(string memory name_, string memory symbol_, address admin) ERC20(name_, symbol_) {
         if (admin == address(0)) revert("ResourceToken: zero admin");
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);

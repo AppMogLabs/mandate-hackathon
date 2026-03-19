@@ -35,11 +35,11 @@ contract Demo is Script {
 
     // Constants for demo
     uint256 constant RATE_FOR_ALPHA = 1000 * 1e18; // PHASE_3_PLACEHOLDER
-    uint256 constant RATE_FOR_BETA = 500 * 1e18;   // PHASE_3_PLACEHOLDER
+    uint256 constant RATE_FOR_BETA = 500 * 1e18; // PHASE_3_PLACEHOLDER
     uint256 constant COMPUTE_FOR_ALPHA = 200 * 1e18; // PHASE_3_PLACEHOLDER
-    uint256 constant CHIPS_FOR_BETA = 300 * 1e18;    // PHASE_3_PLACEHOLDER
-    uint256 constant ORDER_AMOUNT = 100 * 1e18;      // PHASE_3_PLACEHOLDER
-    uint256 constant PRICE_PER_UNIT = 3 * 1e18;      // PHASE_3_PLACEHOLDER
+    uint256 constant CHIPS_FOR_BETA = 300 * 1e18; // PHASE_3_PLACEHOLDER
+    uint256 constant ORDER_AMOUNT = 100 * 1e18; // PHASE_3_PLACEHOLDER
+    uint256 constant PRICE_PER_UNIT = 3 * 1e18; // PHASE_3_PLACEHOLDER
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -61,49 +61,49 @@ contract Demo is Script {
         // =====================================================================
         // STEP 1: SETUP — Deploy all contracts
         // =====================================================================
-        
+
         step1_deploy(deployerKey, deployer);
 
         // =====================================================================
         // STEP 2: REGISTRATION — Both agents register, receive ERC-721 IDs
         // =====================================================================
-        
+
         step2_registration(deployerKey);
 
         // =====================================================================
         // STEP 3: ALLOWLISTING — Owner sets action permissions
         // =====================================================================
-        
+
         step3_allowlisting(deployerKey);
 
         // =====================================================================
         // STEP 4: RESOURCE MINTING — Agents receive resources
         // =====================================================================
-        
+
         step4_resourceMinting(deployerKey);
 
         // =====================================================================
         // STEP 5: TRADING — Orders placed, matched, settled atomically
         // =====================================================================
-        
+
         step5_trading();
 
         // =====================================================================
         // STEP 6: REPUTATION — Agent Beta posts feedback on Agent Alpha
         // =====================================================================
-        
+
         step6_reputation();
 
         // =====================================================================
         // STEP 7: AUDIT VERIFICATION — Query action history
         // =====================================================================
-        
+
         step7_auditVerification();
 
         // =====================================================================
         // STEP 8: SECURITY DEMONSTRATION — Unpermitted action reverts
         // =====================================================================
-        
+
         step8_securityDemonstration();
 
         printFooter();
@@ -166,11 +166,7 @@ contract Demo is Script {
         // Deploy OrderBook
         console2.log("Deploying OrderBook...");
         orderBook = new OrderBook(
-            address(rateToken),
-            address(registry),
-            address(reputationLedger),
-            address(auditLog),
-            deployer
+            address(rateToken), address(registry), address(reputationLedger), address(auditLog), deployer
         );
         console2.log("  OrderBook:  ", address(orderBook));
         console2.log("");
@@ -179,10 +175,10 @@ contract Demo is Script {
         console2.log("Granting roles...");
         reputationLedger.grantRole(reputationLedger.RECORDER_ROLE(), address(orderBook));
         console2.log("  OK: OrderBook -> ReputationLedger.RECORDER_ROLE");
-        
+
         auditLog.grantRole(auditLog.LOGGER_ROLE(), address(orderBook));
         console2.log("  OK: OrderBook -> AuditLog.LOGGER_ROLE");
-        
+
         auditLog.grantRole(auditLog.LOGGER_ROLE(), address(registry));
         console2.log("  OK: AgentRegistry -> AuditLog.LOGGER_ROLE");
 
@@ -241,11 +237,7 @@ contract Demo is Script {
     // =========================================================================
 
     function step3_allowlisting(uint256 deployerKey) internal {
-        printStepHeader(
-            3, 
-            "ALLOWLISTING", 
-            "Owner sets action permissions (deterministic enforcement)"
-        );
+        printStepHeader(3, "ALLOWLISTING", "Owner sets action permissions (deterministic enforcement)");
 
         vm.startBroadcast(deployerKey);
 
@@ -319,13 +311,13 @@ contract Demo is Script {
         console2.log("");
 
         vm.startBroadcast(agentAlphaKey);
-        
+
         // Approve OrderBook to transfer COMPUTE
         computeToken.approve(address(orderBook), ORDER_AMOUNT);
-        
+
         // Place order
         uint256 orderId = orderBook.placeOrder(address(computeToken), ORDER_AMOUNT, PRICE_PER_UNIT);
-        
+
         vm.stopBroadcast();
 
         console2.log("  Order ID:   ", orderId);
@@ -342,13 +334,13 @@ contract Demo is Script {
         console2.log("");
 
         vm.startBroadcast(agentBetaKey);
-        
+
         // Approve OrderBook to transfer RATE
         rateToken.approve(address(orderBook), totalCost);
-        
+
         // Match order
         orderBook.matchOrder(orderId, ORDER_AMOUNT);
-        
+
         vm.stopBroadcast();
 
         // Verify balances after trade
@@ -375,7 +367,7 @@ contract Demo is Script {
         // Check reputation after trade
         console2.log("Reputation scores after trade (auto-recorded by OrderBook):");
         console2.log("");
-        
+
         console2.log("Agent Alpha (seller):");
         console2.log("  Agent ID:   ", alphaId);
         uint256 alphaScore = reputationLedger.getReputation(alphaId);
@@ -395,7 +387,7 @@ contract Demo is Script {
         console2.log("  Trade size: 300 RATE");
         console2.log("  Expected:   300 / 1000 = 0 points (below minimum)");
         console2.log("");
-        
+
         console2.log("NOTE: Reputation accrues over multiple trades.");
         console2.log("      Larger trades (1000+ RATE) yield visible reputation gains.");
         console2.log("");
@@ -421,7 +413,7 @@ contract Demo is Script {
 
         console2.log("Expected events logged during this demo:");
         console2.log("");
-        
+
         console2.log("  Agent Alpha (ID ", alphaId, "):");
         console2.log("    - ORDER_PLACED  (Step 5: Sell order created)");
         console2.log("    - ORDER_MATCHED (Step 5: Order filled by Beta)");
@@ -441,7 +433,7 @@ contract Demo is Script {
             bytes32 allowlistUpdated,
             bytes32 feedbackPosted
         ) = auditLog.getActionTypes();
-        
+
         console2.log("  ORDER_PLACED:   ");
         console2.logBytes32(orderPlaced);
         console2.log("  ORDER_MATCHED:  ");
@@ -464,11 +456,7 @@ contract Demo is Script {
     // =========================================================================
 
     function step8_securityDemonstration() internal {
-        printStepHeader(
-            8, 
-            "SECURITY DEMONSTRATION", 
-            "Unpermitted action reverts (deterministic enforcement)"
-        );
+        printStepHeader(8, "SECURITY DEMONSTRATION", "Unpermitted action reverts (deterministic enforcement)");
 
         console2.log("THE KEY MOMENT:");
         console2.log("Agent Alpha attempts ORDER_MATCH (not on allowlist)...");
@@ -491,9 +479,9 @@ contract Demo is Script {
         // Agent Alpha tries to match (should revert)
         console2.log("Attempting matchOrder...");
         console2.log("");
-        
+
         vm.startBroadcast(agentAlphaKey);
-        
+
         bool reverted = false;
         try orderBook.matchOrder(testOrderId, 5 * 1e18) {
             console2.log("  ERROR: Transaction should have reverted!");
@@ -506,7 +494,7 @@ contract Demo is Script {
             console2.log("  Reason: ActionNotPermitted");
             reverted = true;
         }
-        
+
         vm.stopBroadcast();
 
         console2.log("");

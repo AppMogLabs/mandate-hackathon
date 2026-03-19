@@ -33,12 +33,7 @@ contract AuditLog is AccessControl {
     /// @param action Keccak256 hash of the action type (e.g., ORDER_PLACED).
     /// @param metadata ABI-encoded additional data (contract-specific).
     /// @param timestamp Block timestamp when action was logged.
-    event ActionLogged(
-        uint256 indexed agentId,
-        bytes32 indexed action,
-        bytes metadata,
-        uint256 timestamp
-    );
+    event ActionLogged(uint256 indexed agentId, bytes32 indexed action, bytes metadata, uint256 timestamp);
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -58,11 +53,7 @@ contract AuditLog is AccessControl {
     /// @param agentId The agent ID (from AgentRegistry).
     /// @param action Action type (use predefined constants or custom keccak256 hashes).
     /// @param metadata ABI-encoded context (order details, feedback scores, etc.).
-    function logAction(
-        uint256 agentId,
-        bytes32 action,
-        bytes calldata metadata
-    ) external onlyRole(LOGGER_ROLE) {
+    function logAction(uint256 agentId, bytes32 action, bytes calldata metadata) external onlyRole(LOGGER_ROLE) {
         emit ActionLogged(agentId, action, metadata, block.timestamp);
     }
 
@@ -72,21 +63,18 @@ contract AuditLog is AccessControl {
 
     /// @notice Returns action type constants for off-chain queries.
     /// @dev These are helper views for indexers — the actual log is event-only.
-    function getActionTypes() external pure returns (
-        bytes32 orderPlaced,
-        bytes32 orderMatched,
-        bytes32 orderCancelled,
-        bytes32 agentRegistered,
-        bytes32 allowlistUpdated,
-        bytes32 feedbackPosted
-    ) {
-        return (
-            ORDER_PLACED,
-            ORDER_MATCHED,
-            ORDER_CANCELLED,
-            AGENT_REGISTERED,
-            ALLOWLIST_UPDATED,
-            FEEDBACK_POSTED
-        );
+    function getActionTypes()
+        external
+        pure
+        returns (
+            bytes32 orderPlaced,
+            bytes32 orderMatched,
+            bytes32 orderCancelled,
+            bytes32 agentRegistered,
+            bytes32 allowlistUpdated,
+            bytes32 feedbackPosted
+        )
+    {
+        return (ORDER_PLACED, ORDER_MATCHED, ORDER_CANCELLED, AGENT_REGISTERED, ALLOWLIST_UPDATED, FEEDBACK_POSTED);
     }
 }

@@ -27,9 +27,7 @@ contract AgentRegistrySecurityTest is Test {
 
         // Allowlist is 0 by default — all actions should revert
         for (uint8 i = 0; i <= 6; i++) {
-            vm.expectRevert(
-                abi.encodeWithSelector(AgentRegistry.ActionNotPermitted.selector, agent, i)
-            );
+            vm.expectRevert(abi.encodeWithSelector(AgentRegistry.ActionNotPermitted.selector, agent, i));
             registry.validateAction(agent, i);
         }
     }

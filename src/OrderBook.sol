@@ -37,20 +37,24 @@ contract OrderBook is ReentrancyGuard, Pausable, AccessControl {
     // -------------------------------------------------------------------------
     // Order status enum
     // -------------------------------------------------------------------------
-    enum OrderStatus { ACTIVE, FILLED, CANCELLED }
+    enum OrderStatus {
+        ACTIVE,
+        FILLED,
+        CANCELLED
+    }
 
     // -------------------------------------------------------------------------
     // Order struct
     // -------------------------------------------------------------------------
     struct Order {
         uint256 orderId;
-        address seller;                // Agent placing the order (selling resource)
-        address resourceToken;         // Resource being sold
-        uint256 totalAmount;           // Total resource amount
-        uint256 filledAmount;          // Amount already filled
-        uint256 pricePerUnit;          // Price in RATE per unit of resource
+        address seller; // Agent placing the order (selling resource)
+        address resourceToken; // Resource being sold
+        uint256 totalAmount; // Total resource amount
+        uint256 filledAmount; // Amount already filled
+        uint256 pricePerUnit; // Price in RATE per unit of resource
         OrderStatus status;
-        uint64 timestamp;              // Uses block.timestamp per EthSkills L2 guidance
+        uint64 timestamp; // Uses block.timestamp per EthSkills L2 guidance
     }
 
     // -------------------------------------------------------------------------
@@ -96,11 +100,7 @@ contract OrderBook is ReentrancyGuard, Pausable, AccessControl {
 
     /// @notice Emitted when an order is matched (fully or partially).
     event OrderMatched(
-        uint256 indexed orderId,
-        address indexed seller,
-        address indexed buyer,
-        uint256 fillAmount,
-        uint256 rateAmount
+        uint256 indexed orderId, address indexed seller, address indexed buyer, uint256 fillAmount, uint256 rateAmount
     );
 
     /// @notice Emitted when an order is cancelled.
@@ -152,10 +152,14 @@ contract OrderBook is ReentrancyGuard, Pausable, AccessControl {
     // -------------------------------------------------------------------------
 
     /// @notice Pause order placement and matching. Cancel remains available.
-    function pause() external onlyRole(OPERATOR_ROLE) { _pause(); }
+    function pause() external onlyRole(OPERATOR_ROLE) {
+        _pause();
+    }
 
     /// @notice Resume normal operations.
-    function unpause() external onlyRole(OPERATOR_ROLE) { _unpause(); }
+    function unpause() external onlyRole(OPERATOR_ROLE) {
+        _unpause();
+    }
 
     // -------------------------------------------------------------------------
     // Order Placement
@@ -168,11 +172,12 @@ contract OrderBook is ReentrancyGuard, Pausable, AccessControl {
     /// @param amount Total amount of resource to sell.
     /// @param pricePerUnit Price in RATE per unit of resource.
     /// @return orderId The ID of the newly created order.
-    function placeOrder(
-        address resourceToken,
-        uint256 amount,
-        uint256 pricePerUnit
-    ) external nonReentrant whenNotPaused returns (uint256 orderId) {
+    function placeOrder(address resourceToken, uint256 amount, uint256 pricePerUnit)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 orderId)
+    {
         // Validation: AgentRegistry permission check (reverts if not permitted)
         agentRegistry.validateAction(msg.sender, ACTION_ORDER_PLACE);
 
@@ -254,10 +259,12 @@ contract OrderBook is ReentrancyGuard, Pausable, AccessControl {
     /// @param orderId The ID of the order to match.
     /// @param fillAmount Amount of resource to buy (must be ≤ remaining amount).
     /// @return success True if the match succeeded.
-    function matchOrder(
-        uint256 orderId,
-        uint256 fillAmount
-    ) external nonReentrant whenNotPaused returns (bool success) {
+    function matchOrder(uint256 orderId, uint256 fillAmount)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (bool success)
+    {
         // Checks: order exists and is active
         Order storage order = orders[orderId];
         if (order.seller == address(0)) revert OrderNotFound();

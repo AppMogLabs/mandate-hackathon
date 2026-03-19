@@ -16,18 +16,18 @@ contract OrderBookTest is Test {
     AgentRegistry public agentRegistry;
     ReputationLedger public reputationLedger;
     AuditLog public auditLog;
-    
+
     address public admin = address(1);
     address public seller = address(2);
     address public buyer = address(3);
     address public unauthorized = address(4);
-    
+
     uint256 public sellerAgentId;
     uint256 public buyerAgentId;
-    
+
     uint256 constant INITIAL_RATE_BALANCE = 1_000_000 * 1e18;
     uint256 constant INITIAL_COMPUTE_BALANCE = 10_000 * 1e18;
-    
+
     event OrderPlaced(
         uint256 indexed orderId,
         address indexed seller,
@@ -35,17 +35,13 @@ contract OrderBookTest is Test {
         uint256 amount,
         uint256 pricePerUnit
     );
-    
+
     event OrderMatched(
-        uint256 indexed orderId,
-        address indexed seller,
-        address indexed buyer,
-        uint256 fillAmount,
-        uint256 rateAmount
+        uint256 indexed orderId, address indexed seller, address indexed buyer, uint256 fillAmount, uint256 rateAmount
     );
-    
+
     event OrderCancelled(uint256 indexed orderId, address indexed seller);
-    
+
     function setUp() public {
         // Deploy core contracts
         rateToken = new RateToken(admin);
@@ -53,40 +49,36 @@ contract OrderBookTest is Test {
         agentRegistry = new AgentRegistry(admin);
         reputationLedger = new ReputationLedger(admin);
         auditLog = new AuditLog(admin);
-        
+
         // Deploy OrderBook
         orderBook = new OrderBook(
-            address(rateToken),
-            address(agentRegistry),
-            address(reputationLedger),
-            address(auditLog),
-            admin
+            address(rateToken), address(agentRegistry), address(reputationLedger), address(auditLog), admin
         );
-        
+
         // Grant roles
         vm.startPrank(admin);
         reputationLedger.grantRole(reputationLedger.RECORDER_ROLE(), address(orderBook));
         auditLog.grantRole(auditLog.LOGGER_ROLE(), address(orderBook));
         computeToken.grantRole(computeToken.MINTER_ROLE(), admin);
-        
+
         // Register agents
         sellerAgentId = agentRegistry.registerAgent(seller, "ipfs://seller");
         buyerAgentId = agentRegistry.registerAgent(buyer, "ipfs://buyer");
-        
+
         // Grant action permissions
         agentRegistry.grantAction(sellerAgentId, agentRegistry.ACTION_ORDER_PLACE());
         agentRegistry.grantAction(sellerAgentId, agentRegistry.ACTION_ORDER_CANCEL());
         agentRegistry.grantAction(buyerAgentId, agentRegistry.ACTION_ORDER_MATCH());
         agentRegistry.grantAction(buyerAgentId, agentRegistry.ACTION_ORDER_PLACE());
-        
+
         // Mint tokens
         rateToken.transfer(seller, INITIAL_RATE_BALANCE / 2);
         rateToken.transfer(buyer, INITIAL_RATE_BALANCE / 2);
         computeToken.mint(seller, INITIAL_COMPUTE_BALANCE);
-        
+
         vm.stopPrank();
     }
-    
+
     function test_Constructor() public view {
         assertEq(address(orderBook.rateToken()), address(rateToken));
         assertEq(address(orderBook.agentRegistry()), address(agentRegistry));
@@ -94,24 +86,24 @@ contract OrderBookTest is Test {
         assertEq(address(orderBook.auditLog()), address(auditLog));
         assertTrue(orderBook.hasRole(orderBook.DEFAULT_ADMIN_ROLE(), admin));
     }
-    
+
     function test_PlaceOrder_Success() public {
         uint256 amount = 100 * 1e18;
         uint256 pricePerUnit = 3 * 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), amount);
-        
+
         vm.expectEmit(true, true, true, true);
         emit OrderPlaced(1, seller, address(computeToken), amount, pricePerUnit);
-        
+
         uint256 orderId = orderBook.placeOrder(address(computeToken), amount, pricePerUnit);
         vm.stopPrank();
-        
+
         assertEq(orderId, 1);
         assertEq(computeToken.balanceOf(address(orderBook)), amount);
         assertEq(computeToken.balanceOf(seller), INITIAL_COMPUTE_BALANCE - amount);
-        
+
         OrderBook.Order memory order = orderBook.getOrder(orderId);
         assertEq(order.seller, seller);
         assertEq(order.resourceToken, address(computeToken));
@@ -120,7 +112,7 @@ contract OrderBookTest is Test {
         assertEq(order.pricePerUnit, pricePerUnit);
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.ACTIVE));
     }
-    
+
     function test_PlaceOrder_RevertsUnauthorized() public {
         // Unauthorized agent is not registered, so AgentRegistry reverts with AgentNotRegistered
         vm.startPrank(unauthorized);
@@ -130,95 +122,95 @@ contract OrderBookTest is Test {
         orderBook.placeOrder(address(computeToken), 100 * 1e18, 3 * 1e18);
         vm.stopPrank();
     }
-    
+
     function test_PlaceOrder_RevertsInvalidParameters() public {
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), 100 * 1e18);
-        
+
         // Zero resource token
         vm.expectRevert(OrderBook.InvalidOrderParameters.selector);
         orderBook.placeOrder(address(0), 100 * 1e18, 3 * 1e18);
-        
+
         // Zero amount
         vm.expectRevert(OrderBook.InvalidOrderParameters.selector);
         orderBook.placeOrder(address(computeToken), 0, 3 * 1e18);
-        
+
         // Zero price
         vm.expectRevert(OrderBook.InvalidOrderParameters.selector);
         orderBook.placeOrder(address(computeToken), 100 * 1e18, 0);
-        
+
         vm.stopPrank();
     }
-    
+
     function test_MatchOrder_FullFill() public {
         // Seller places order
         uint256 amount = 100 * 1e18;
         uint256 pricePerUnit = 3 * 1e18;
         uint256 totalCost = amount * pricePerUnit / 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), amount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), amount, pricePerUnit);
         vm.stopPrank();
-        
+
         // Buyer matches order
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), totalCost);
-        
+
         vm.expectEmit(true, true, true, true);
         emit OrderMatched(orderId, seller, buyer, amount, totalCost);
-        
+
         bool success = orderBook.matchOrder(orderId, amount);
         vm.stopPrank();
-        
+
         assertTrue(success);
-        
+
         // Check token transfers
         assertEq(computeToken.balanceOf(buyer), amount);
         assertEq(computeToken.balanceOf(address(orderBook)), 0);
         assertEq(rateToken.balanceOf(seller), INITIAL_RATE_BALANCE / 2 + totalCost);
         assertEq(rateToken.balanceOf(buyer), INITIAL_RATE_BALANCE / 2 - totalCost);
-        
+
         // Check order status
         OrderBook.Order memory order = orderBook.getOrder(orderId);
         assertEq(order.filledAmount, amount);
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.FILLED));
-        
+
         // Check reputation was recorded
         assertGt(reputationLedger.getReputation(buyerAgentId), 0);
         assertGt(reputationLedger.getReputation(sellerAgentId), 0);
     }
-    
+
     function test_MatchOrder_PartialFill() public {
         // Seller places order for 100 units
         uint256 totalAmount = 100 * 1e18;
         uint256 pricePerUnit = 3 * 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), totalAmount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), totalAmount, pricePerUnit);
         vm.stopPrank();
-        
+
         // Buyer matches only 40 units
         uint256 fillAmount = 40 * 1e18;
         uint256 fillCost = fillAmount * pricePerUnit / 1e18;
-        
+
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), fillCost);
         orderBook.matchOrder(orderId, fillAmount);
         vm.stopPrank();
-        
+
         // Check order status
         OrderBook.Order memory order = orderBook.getOrder(orderId);
         assertEq(order.filledAmount, fillAmount);
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.ACTIVE));
         assertEq(orderBook.getRemainingAmount(orderId), totalAmount - fillAmount);
-        
+
         // Check balances
         assertEq(computeToken.balanceOf(buyer), fillAmount);
         assertEq(computeToken.balanceOf(address(orderBook)), totalAmount - fillAmount);
     }
-    
+
     function test_MatchOrder_MultiplePartialFills() public {
         // Seller places order for 100 units
         uint256 totalAmount = 100 * 1e18;
@@ -263,7 +255,7 @@ contract OrderBookTest is Test {
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.FILLED));
         assertEq(orderBook.getRemainingAmount(orderId), 0);
     }
-    
+
     function test_MatchOrder_RevertsUnauthorized() public {
         // Seller places order
         vm.startPrank(seller);
@@ -277,14 +269,14 @@ contract OrderBookTest is Test {
         orderBook.matchOrder(orderId, 100 * 1e18);
         vm.stopPrank();
     }
-    
+
     function test_MatchOrder_RevertsInsufficientRemaining() public {
         // Seller places order for 100 units
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), 100 * 1e18);
         uint256 orderId = orderBook.placeOrder(address(computeToken), 100 * 1e18, 3 * 1e18);
         vm.stopPrank();
-        
+
         // Buyer tries to fill 150 units
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), 450 * 1e18);
@@ -292,105 +284,105 @@ contract OrderBookTest is Test {
         orderBook.matchOrder(orderId, 150 * 1e18);
         vm.stopPrank();
     }
-    
+
     function test_CancelOrder_Success() public {
         // Seller places order
         uint256 amount = 100 * 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), amount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), amount, 3 * 1e18);
-        
+
         // Cancel order
         vm.expectEmit(true, true, false, false);
         emit OrderCancelled(orderId, seller);
-        
+
         orderBook.cancelOrder(orderId);
         vm.stopPrank();
-        
+
         // Check order status
         OrderBook.Order memory order = orderBook.getOrder(orderId);
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.CANCELLED));
-        
+
         // Check tokens returned
         assertEq(computeToken.balanceOf(seller), INITIAL_COMPUTE_BALANCE);
         assertEq(computeToken.balanceOf(address(orderBook)), 0);
     }
-    
+
     function test_CancelOrder_PartiallyFilled() public {
         // Seller places order for 100 units
         uint256 totalAmount = 100 * 1e18;
         uint256 pricePerUnit = 3 * 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), totalAmount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), totalAmount, pricePerUnit);
         vm.stopPrank();
-        
+
         // Buyer fills 40 units
         uint256 fillAmount = 40 * 1e18;
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), fillAmount * pricePerUnit / 1e18);
         orderBook.matchOrder(orderId, fillAmount);
         vm.stopPrank();
-        
+
         // Seller cancels remaining
         vm.prank(seller);
         orderBook.cancelOrder(orderId);
-        
+
         // Check balances — seller got back unfilled tokens, buyer keeps filled amount
         assertEq(computeToken.balanceOf(seller), INITIAL_COMPUTE_BALANCE - fillAmount);
         assertEq(computeToken.balanceOf(address(orderBook)), 0);
     }
-    
+
     function test_CancelOrder_RevertsUnauthorized() public {
         // Seller places order
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), 100 * 1e18);
         uint256 orderId = orderBook.placeOrder(address(computeToken), 100 * 1e18, 3 * 1e18);
         vm.stopPrank();
-        
+
         // Unauthorized tries to cancel
         vm.prank(unauthorized);
         vm.expectRevert(OrderBook.UnauthorizedCaller.selector);
         orderBook.cancelOrder(orderId);
     }
-    
+
     function test_CancelOrder_RevertsNotOwner() public {
         // Seller places order
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), 100 * 1e18);
         uint256 orderId = orderBook.placeOrder(address(computeToken), 100 * 1e18, 3 * 1e18);
         vm.stopPrank();
-        
+
         // Buyer tries to cancel seller's order
         vm.prank(buyer);
         vm.expectRevert(OrderBook.UnauthorizedCaller.selector);
         orderBook.cancelOrder(orderId);
     }
-    
+
     function test_CancelOrder_RevertsAlreadyFilled() public {
         // Seller places order
         uint256 amount = 100 * 1e18;
         uint256 pricePerUnit = 3 * 1e18;
-        
+
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), amount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), amount, pricePerUnit);
         vm.stopPrank();
-        
+
         // Buyer fills entire order
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), amount * pricePerUnit / 1e18);
         orderBook.matchOrder(orderId, amount);
         vm.stopPrank();
-        
+
         // Seller tries to cancel filled order
         vm.prank(seller);
         vm.expectRevert(OrderBook.OrderNotActive.selector);
         orderBook.cancelOrder(orderId);
     }
-    
+
     function test_QueryFunctions() public view {
         assertTrue(orderBook.canPlaceOrder(seller));
         assertTrue(orderBook.canCancelOrder(seller));
@@ -401,33 +393,33 @@ contract OrderBookTest is Test {
         // Registered but no cancel permission
         assertFalse(orderBook.canCancelOrder(buyer));
     }
-    
+
     function testFuzz_PlaceAndMatchOrder(uint96 amount, uint96 pricePerUnit) public {
         vm.assume(amount >= 1e15 && amount < 1000 * 1e18); // Respect MIN_ORDER_AMOUNT
         vm.assume(pricePerUnit > 0 && pricePerUnit < 100 * 1e18);
-        
+
         // Ensure rateAmount > 0 and buyer has enough RATE
         uint256 totalCost = uint256(amount) * uint256(pricePerUnit) / 1e18;
         vm.assume(totalCost > 0 && totalCost <= INITIAL_RATE_BALANCE / 2);
-        
+
         // Place order
         vm.startPrank(seller);
         computeToken.approve(address(orderBook), amount);
         uint256 orderId = orderBook.placeOrder(address(computeToken), amount, pricePerUnit);
         vm.stopPrank();
-        
+
         // Match order
         vm.startPrank(buyer);
         rateToken.approve(address(orderBook), totalCost);
         orderBook.matchOrder(orderId, amount);
         vm.stopPrank();
-        
+
         // Verify
         OrderBook.Order memory order = orderBook.getOrder(orderId);
         assertEq(uint256(order.status), uint256(OrderBook.OrderStatus.FILLED));
         assertEq(computeToken.balanceOf(buyer), amount);
     }
-    
+
     function test_MatchOrder_RevertsZeroFillAmount() public {
         // Seller places order
         vm.startPrank(seller);
@@ -619,8 +611,9 @@ contract MaliciousToken {
             reentrant = false; // Prevent infinite loop
             // Try to call cancelOrder during the transfer callback
             try OrderBook(target).cancelOrder(reentrantOrderId) {
-                // If this succeeds, reentrancy guard is broken
-            } catch {
+            // If this succeeds, reentrancy guard is broken
+            }
+                catch {
                 // Expected: ReentrancyGuard blocks this
             }
         }

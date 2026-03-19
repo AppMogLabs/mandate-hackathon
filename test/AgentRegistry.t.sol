@@ -156,13 +156,7 @@ contract AgentRegistryTest is Test {
         registry.validateAction(agentAlpha, actionPlace);
 
         // ORDER_CANCEL should revert — this is the key security demo
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AgentRegistry.ActionNotPermitted.selector,
-                agentAlpha,
-                actionCancel
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(AgentRegistry.ActionNotPermitted.selector, agentAlpha, actionCancel));
         registry.validateAction(agentAlpha, actionCancel);
     }
 
@@ -173,13 +167,7 @@ contract AgentRegistryTest is Test {
         registry.registerAgent(agentAlpha, "ipfs://alpha");
         // No actions granted — agent is registered but cannot do anything
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AgentRegistry.ActionNotPermitted.selector,
-                agentAlpha,
-                actionPlace
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(AgentRegistry.ActionNotPermitted.selector, agentAlpha, actionPlace));
         registry.validateAction(agentAlpha, actionPlace);
     }
 

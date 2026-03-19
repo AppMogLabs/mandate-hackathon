@@ -75,10 +75,7 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
     // -------------------------------------------------------------------------
 
     /// @param admin Address that receives DEFAULT_ADMIN_ROLE, REGISTRAR_ROLE, and OPERATOR_ROLE.
-    constructor(address admin)
-        ERC721("MANDATE Agent", "MAGENT")
-        EIP712("MANDATE AgentRegistry", "1")
-    {
+    constructor(address admin) ERC721("MANDATE Agent", "MAGENT") EIP712("MANDATE AgentRegistry", "1") {
         if (admin == address(0)) revert("AgentRegistry: zero admin");
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -94,10 +91,11 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
     /// @param agentAddress The wallet address of the agent being registered.
     /// @param uri Off-chain registration file URI (ERC-8004 agentURI).
     /// @return agentId The minted NFT token ID.
-    function registerAgent(
-        address agentAddress,
-        string calldata uri
-    ) external onlyRole(REGISTRAR_ROLE) returns (uint256 agentId) {
+    function registerAgent(address agentAddress, string calldata uri)
+        external
+        onlyRole(REGISTRAR_ROLE)
+        returns (uint256 agentId)
+    {
         if (agentIdOf[agentAddress] != 0) revert AgentAlreadyRegistered(agentAddress);
         if (agentAddress == address(0)) revert("AgentRegistry: zero agent");
 
@@ -117,10 +115,7 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
     /// @notice Set the full action allowlist bitmap for an agent.
     /// @param agentId The agent's NFT token ID.
     /// @param actionBitmap Bitmap where bit N = 1 means action N is permitted.
-    function updateAllowlist(
-        uint256 agentId,
-        uint256 actionBitmap
-    ) external onlyRole(OPERATOR_ROLE) {
+    function updateAllowlist(uint256 agentId, uint256 actionBitmap) external onlyRole(OPERATOR_ROLE) {
         _requireOwned(agentId);
         allowlistOf[agentId] = actionBitmap;
 
@@ -206,15 +201,9 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
     ) internal returns (address signer) {
         if (block.timestamp > deadline) revert GuardSignatureExpired();
 
-        bytes32 structHash = keccak256(abi.encode(
-            GUARD_ACTION_TYPEHASH,
-            agent,
-            actionType,
-            target,
-            dataHash,
-            guardNonces[agent]++,
-            deadline
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(GUARD_ACTION_TYPEHASH, agent, actionType, target, dataHash, guardNonces[agent]++, deadline)
+        );
 
         bytes32 digest = _hashTypedDataV4(structHash);
         signer = ECDSA.recover(digest, guardSig);
@@ -249,11 +238,7 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
     /// @dev Agent NFTs are soulbound (non-transferable) in Sprint 0.
     ///      Transferable agent identities require careful design around reputation
     ///      and allowlist semantics — deferred to a later sprint.
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override
-        returns (address)
-    {
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);
         // Allow minting (from == address(0)), block all transfers
         if (from != address(0) && to != address(0)) {
@@ -262,12 +247,7 @@ contract AgentRegistry is ERC721, AccessControl, EIP712 {
         return super._update(to, tokenId, auth);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, AccessControl)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
